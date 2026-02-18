@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的个人主页 | Jeff's Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- 动态主题变量 --- */
+        :root {
+            --accent-color: 124, 58, 237; /* 默认紫色 */
+            --bg-blob-1: 124, 58, 237;
+            --bg-blob-2: 236, 72, 153;
+            --glass-border: 255, 255, 255;
+        }
+
+        /* 天气主题类 */
+        body.weather-sunny {
+            --accent-color: 245, 158, 11; /* 橙色 */
+            --bg-blob-1: 251, 146, 60;
+            --bg-blob-2: 252, 211, 77;
+        }
+        
+        body.weather-rainy {
+            --accent-color: 59, 130, 246; /* 蓝色 */
+            --bg-blob-1: 30, 64, 175;
+            --bg-blob-2: 96, 165, 250;
+        }
+
+        body.weather-cloudy {
+            --accent-color: 20, 184, 166; /* 青色 */
+            --bg-blob-1: 94, 234, 212;
+            --bg-blob-2: 148, 163, 184;
+        }
+
+        body {
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            color: #e5e5e5;
+            overflow-x: hidden;
+            transition: all 1s ease;
+        }
+
+        h1, h2, h3, .font-heading {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* --- 动态背景层 --- */
+        .ambient-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: #050505;
+        }
+
+        .blob {
+            position: absolute;
+            filter: blur(90px);
+            opacity: 0.5;
+            transition: background 1.5s ease;
+            animation: float 10s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(var(--bg-blob-1), 0.4) 0%, transparent 70%);
+        }
+
+        .blob-2 {
+            bottom: -10%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(var(--bg-blob-2), 0.3) 0%, transparent 70%);
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(20px, 40px) scale(1.1); }
+        }
+
+        /* --- 雨滴特效 canvas --- */
+        #rain-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        body.weather-rainy #rain-canvas {
+            opacity: 1;
+        }
+
+        /* --- 清透毛玻璃 Bento Card --- */
+        .bento-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px);
+            
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            
+            border-radius: 24px;
+            padding: 24px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .bento-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(var(--accent-color), 0.3);
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), 
+                        inset 0 0 20px rgba(var(--accent-color), 0.05);
+        }
+
+        /* 内部装饰光晕 */
+        .card-decoration {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(var(--accent-color), 0.15) 0%, transparent 70%);
+            top: -100px;
+            right: -100px;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bento-card:hover .card-decoration {
+            opacity: 1;
+        }
+
+        /* 文字渐变 */
+        .text-gradient-dynamic {
+            background-image: linear-gradient(to right, rgb(var(--bg-blob-1)), rgb(var(--bg-blob-2)));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            transition: background-image 1s ease;
+        }
+
+        /* --- macOS Dock 样式 --- */
+        .dock-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 12px;
+            height: 80px; 
+            padding-bottom: 10px;
+        }
+        
+        .dock-item {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+            transform-origin: bottom center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .dock-item i {
+            font-size: 24px;
+            transition: all 0.1s;
+        }
+        
+        /* 图标具体颜色 */
+        .dock-item.english { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1)); border-color: rgba(59, 130, 246, 0.3); }
+        .dock-item.english i { color: #60a5fa; }
+        
+        .dock-item.math { background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.1)); border-color: rgba(249, 115, 22, 0.3); }
+        .dock-item.math i { color: #fb923c; }
+
+        .dock-item.geo { background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1)); border-color: rgba(16, 185, 129, 0.3); }
+        .dock-item.geo i { color: #34d399; }
+        
+        .dock-item.science { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(124, 58, 237, 0.1)); border-color: rgba(139, 92, 246, 0.3); }
+        .dock-item.science i { color: #a78bfa; }
+
+        /* Dock Tooltip */
+        .dock-tooltip {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .dock-item:hover .dock-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- 下雨窗口样式 --- */
+        .rainy-window {
+            background-image: url('https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?q=80&w=1000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .rainy-window::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(1px); /* 轻微模糊，模拟玻璃 */
+        }
+        .drop-animation {
+            position: absolute;
+            top: -20px;
+            width: 1px;
+            height: 15px;
+            background: rgba(255,255,255,0.4);
+            animation: dropFall 2s linear infinite;
+        }
+        @keyframes dropFall {
+            to { top: 100%; }
+        }
+
+    </style>
+</head>
+<body class="p-4 md:p-8 lg:p-12">
+
+    <!-- 雨滴画布 -->
+    <canvas id="rain-canvas"></canvas>
+
+    <!-- 动态背景 -->
+    <div class="ambient-light">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+
+        <!-- 1. 个人简介 (2x2) -->
+        <div class="bento-card lg:col-span-2 lg:row-span-2 justify-between min-h-[300px]">
+            <div class="card-decoration"></div>
+            <div class="flex items-start justify-between mb-4">
+                <div class="relative group">
+                    <!-- ▼▼▼ 在这里修改头像链接 (src="...") ▼▼▼ -->
+                    <img src="./HOME-2.jpg" alt="Jeff Avatar" class="w-24 h-24 rounded-full border-2 border-white/10 group-hover:scale-105 transition-transform duration-500 object-cover shadow-2xl">
+                    <div class="absolute -bottom-1 -right-1 bg-black rounded-full p-1 border border-zinc-800">
+                        <div id="status-dot" class="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs font-bold backdrop-blur-md">
+                    <i class="fas fa-circle text-[10px] mr-1 text-green-400"></i> Open to Work
+                </div>
+            </div>
+            
+            <div class="relative z-10">
+                <!-- 名字改成 Jeff -->
+                <h1 class="text-4xl md:text-5xl font-bold mb-3 text-white tracking-tight">
+                    Hola! <br>
+                    <span class="text-gradient-dynamic">I'm Jeff.</span>
+                </h1>
+                <!-- 简介改成名言 -->
+                <p class="text-slate-400 text-lg leading-relaxed mb-6 uppercase font-bold tracking-wide">
+                    I AM WHO I AM TODAY BECAUSE OF THE CHOICE I MADE YESTERDAY.
+                </p>
+                
+                <!-- 技能图标栏 -->
+                <div class="flex flex-wrap gap-3 mt-4">
+                     <!-- Python -->
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 hover:border-yellow-400/50 hover:text-yellow-400 transition-all cursor-pointer" title="Python">
+                        <i class="fab fa-python text-lg"></i>
+                    </div>
+                    <!-- Docker -->
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 hover:border-blue-400/50 hover:text-blue-400 transition-all cursor-pointer" title="Docker">
+                        <i class="fab fa-docker text-lg"></i>
+                    </div>
+                    <!-- Node.js -->
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 hover:border-green-400/50 hover:text-green-400 transition-all cursor-pointer" title="Node.js">
+                        <i class="fab fa-node-js text-lg"></i>
+                    </div>
+                    <!-- React -->
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 hover:border-cyan-400/50 hover:text-cyan-400 transition-all cursor-pointer" title="React">
+                        <i class="fab fa-react text-lg animate-[spin_10s_linear_infinite]"></i>
+                    </div>
+                    <!-- Figma -->
+                    <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10 hover:border-pink-400/50 hover:text-pink-400 transition-all cursor-pointer" title="Figma">
+                        <i class="fab fa-figma text-lg"></i>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 2. 动态天气卡片 (1x1) -->
+        <div class="bento-card flex flex-col justify-center items-center text-center relative overflow-hidden" id="weather-card">
+            <div class="card-decoration"></div>
+            <div class="z-10">
+                <div id="weather-icon" class="text-5xl mb-3 text-white/90 drop-shadow-lg transition-all duration-500">
+                    <i class="fas fa-compass fa-spin-pulse"></i>
+                </div>
+                <h3 id="temp-display" class="text-3xl font-bold text-white mb-1">--°C</h3>
+                <p id="location-display" class="text-xs text-slate-400 uppercase tracking-widest">CONNECTING...</p>
+            </div>
+        </div>
+
+        <!-- 3. 下雨的窗口 (替代原 Tech Stack) (1x2 竖长条) -->
+        <div class="bento-card lg:row-span-2 rainy-window group">
+            <div class="relative z-10 flex flex-col h-full justify-between">
+                <div class="flex justify-between items-center">
+                    <i class="fas fa-cloud-rain text-white/50 text-xl"></i>
+                    <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+                </div>
+                <div>
+                    <h3 class="font-heading text-2xl font-bold text-white mb-1">Focus Mode</h3>
+                    <p class="text-xs text-white/60">Rainy vibes for deep work.</p>
+                </div>
+            </div>
+            <!-- 模拟玻璃上的雨滴动画 -->
+            <div class="drop-animation" style="left: 20%; animation-duration: 1.5s; animation-delay: 0s;"></div>
+            <div class="drop-animation" style="left: 50%; animation-duration: 1.8s; animation-delay: 0.5s;"></div>
+            <div class="drop-animation" style="left: 80%; animation-duration: 1.3s; animation-delay: 1s;"></div>
+            <div class="drop-animation" style="left: 35%; animation-duration: 2s; animation-delay: 0.2s;"></div>
+            <div class="drop-animation" style="left: 65%; animation-duration: 1.6s; animation-delay: 0.8s;"></div>
+        </div>
+
+        <!-- 4. StudyEnglishWith.me 课程 Dock -->
+        <div class="bento-card lg:col-span-2 flex flex-col justify-center relative overflow-visible">
+            <div class="card-decoration" style="background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
+            
+            <div class="relative z-10 w-full">
+                <!-- 顶栏标题 -->
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <div>
+                         <span class="text-xs font-bold text-blue-400 mb-1 block tracking-wider uppercase">Online Course</span>
+                         <h3 class="text-2xl font-bold text-white font-heading">StudyEnglishWith.me</h3>
+                    </div>
+                    <a href="#" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white hover:text-black transition-colors">
+                        <i class="fas fa-arrow-right text-sm"></i>
+                    </a>
+                </div>
+
+                <!-- MacBook Style Dock -->
+                <div class="dock-wrapper flex justify-center w-full">
+                    <div class="dock-container" id="course-dock">
+                        
+                        <!-- 1. English -->
+                        <div class="dock-item english" data-title="English">
+                            <div class="dock-tooltip">English</div>
+                            <i class="fas fa-book"></i>
+                        </div>
+
+                        <!-- 2. Math -->
+                        <div class="dock-item math" data-title="Math">
+                            <div class="dock-tooltip">Math</div>
+                            <i class="fas fa-square-root-variable"></i>
+                        </div>
+
+                        <!-- 3. Geography -->
+                        <div class="dock-item geo" data-title="Geography">
+                            <div class="dock-tooltip">Geography</div>
+                            <i class="fas fa-globe-asia"></i>
+                        </div>
+
+                        <!-- 4. Triple-Science -->
+                        <div class="dock-item science" data-title="Triple-Science">
+                            <div class="dock-tooltip">Triple-Science</div>
+                            <i class="fas fa-atom"></i>
+                        </div>
+
+                    </div>
+                </div>
+                
+                <p class="text-center text-xs text-slate-500 mt-2">Hover to explore modules</p>
+            </div>
+        </div>
+
+    </main>
+    
+    <!-- 修改页脚文案 -->
+    <footer class="text-center text-slate-700 mt-12 mb-6 text-sm">
+        <p>This is sponsored by Bill Gates.</p>
+    </footer>
+
+    <!-- Re:plain 聊天插件 -->
+    <script>
+    window.replainSettings = { id: '8475b4ae-022a-452c-a8c1-ce5085904208' };
+    (function(u){var s=document.createElement('script');s.async=true;s.src=u;
+    var x=document.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);
+    })('https://widget.replain.cc/dist/client.js');
+    </script>
+
+    <script>
+        // --- 1. macOS Dock 缩放特效逻辑 ---
+        const dock = document.getElementById('course-dock');
+        const items = dock.querySelectorAll('.dock-item');
+        
+        // 基础尺寸配置
+        const baseSize = 50; // 默认大小
+        const maxScale = 1.6; // 最大放大倍数 (1.6倍)
+        const range = 150; // 鼠标影响范围 (像素)
+
+        // 监听 Dock 区域的鼠标移动
+        dock.addEventListener('mousemove', (e) => {
+            const mouseX = e.clientX;
+            
+            items.forEach(item => {
+                const rect = item.getBoundingClientRect();
+                const itemCenterX = rect.left + rect.width / 2;
+                
+                // 计算鼠标距离图标中心的距离 (绝对值)
+                const distance = Math.abs(mouseX - itemCenterX);
+                
+                let scale = 1;
+                
+                // 如果在影响范围内，根据正态分布曲线(Gaussian)计算缩放比例
+                if (distance < range) {
+                    // 距离越近，scale 越大。使用了余弦曲线来模拟平滑过渡
+                    const scaleFactor = Math.cos((distance / range) * (Math.PI / 2));
+                    scale = 1 + (maxScale - 1) * scaleFactor;
+                }
+                
+                // 应用样式
+                item.style.width = `${baseSize * scale}px`;
+                item.style.height = `${baseSize * scale}px`;
+                item.style.fontSize = `${24 * scale}px`; // 图标也随之放大
+            });
+        });
+
+        // 鼠标离开 Dock 区域时，复原所有图标
+        dock.addEventListener('mouseleave', () => {
+            items.forEach(item => {
+                item.style.width = `${baseSize}px`;
+                item.style.height = `${baseSize}px`;
+                item.style.fontSize = '24px';
+            });
+        });
+
+        // --- 2. 雨滴特效 (保持不变) ---
+        const canvas = document.getElementById('rain-canvas');
+        const ctx = canvas.getContext('2d');
+        let raindrops = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Raindrop {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+                this.speed = Math.random() * 5 + 10;
+                this.length = Math.random() * 20 + 10;
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) {
+                    this.y = Math.random() * -canvas.height;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x, this.y + this.length);
+                ctx.strokeStyle = `rgba(173, 216, 230, ${this.opacity})`;
+                ctx.lineWidth = 1;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+        }
+
+        function initRain() {
+            raindrops = [];
+            for (let i = 0; i < 150; i++) {
+                raindrops.push(new Raindrop());
+            }
+        }
+
+        function animateRain() {
+            if (!document.body.classList.contains('weather-rainy')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(animateRain);
+                return;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            raindrops.forEach(drop => {
+                drop.update();
+                drop.draw();
+            });
+            requestAnimationFrame(animateRain);
+        }
+
+        initRain();
+        animateRain();
+
+        // --- 3. 天气获取 ---
+        const tempDisplay = document.getElementById('temp-display');
+        const locDisplay = document.getElementById('location-display');
+        const weatherIcon = document.getElementById('weather-icon');
+        // 注意：weatherText 元素已经被我们从 HTML 中移除了，所以不需要再操作它
+
+        function setWeather(type, temp = 25, city = '江苏, CN') {
+            document.body.className = `p-4 md:p-8 lg:p-12 weather-${type}`;
+            
+            let iconClass = 'fa-sun';
+            // 移除了 weatherText 的更新逻辑
+            
+            if (type === 'rainy') {
+                iconClass = 'fa-cloud-showers-heavy';
+            } else if (type === 'cloudy') {
+                iconClass = 'fa-cloud';
+            } else {
+                iconClass = 'fa-sun';
+            }
+
+            weatherIcon.innerHTML = `<i class="fas ${iconClass}"></i>`;
+            // weatherText.innerHTML = desc; // DELETED
+            tempDisplay.innerText = `${temp}°C`;
+            locDisplay.innerText = city;
+        }
+
+        function fetchLocalWeather() {
+            
+            const lat = 33.39;
+            const lon = 120.15;
+            
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                .then(response => response.json())
+                .then(data => {
+                    const code = data.current_weather.weathercode;
+                    const temp = data.current_weather.temperature;
+                    
+                    let type = 'sunny';
+                    if (code > 50) type = 'rainy';
+                    else if (code > 1) type = 'cloudy';
+
+                    setWeather(type, temp, '江苏, CN');
+                })
+                .catch(err => {
+                    console.error("Weather fetch failed", err);
+                    setWeather('sunny', 24, '江苏, CN (Offline)'); 
+                });
+        }
+
+        window.addEventListener('load', () => {
+            setTimeout(fetchLocalWeather, 500);
+        });
+
+    </script>
+</body>
+</html>
